@@ -1,0 +1,62 @@
+/*
+  Hartballer perfect sphere rendering
+  Copyright (C) 2015 Peter Wagener ( wagenerp@mail.uni-paderborn.de )
+  
+  This program is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the 
+  Free Software Foundation, either version 3 of the License, or (at your option)
+  any later version. 
+  This program is distributed in the hope that it will be useful, but WITHOUT 
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
+  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+  details. 
+  You should have received a copy of the GNU General Public License along with 
+  this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#version 330  
+#include config.h
+
+uniform mat4 u_MVP;
+uniform mat4 u_MV;
+smooth in vec4 f_pos_w;
+in vec4 f_cop_w;
+
+out vec4 color;
+
+float sqr(float a) { return a*a; }
+float sqrv(vec3 v) { return dot(v,v); }
+
+void main(void) {
+  vec3  c_w=gl_TexCoord[0].xyz; // sphere center
+  float r=gl_TexCoord[0].w;     // sphere radius
+  vec3  o_w=f_cop_w.xyz;        // ray origin
+  vec3  l_w=normalize(f_pos_w.xyz-f_cop_w.xyz); // ray direction
+  
+  // do we hit / tangent the sphere? (det>=0)
+  float det= sqr(dot(l_w,(o_w-c_w))) - sqrv(o_w-c_w) + r*r;
+  
+  if (det<0) { // fragment not part of the sphere -> make invisible
+    color=vec4(0,0,0,0);
+    gl_FragDepth=1;
+    
+  } else { // fragment part of the sphere
+    
+    vec3 p_w=o_w+l_w*(dot(l_w,c_w-o_w) - sqrt(det)); // position on the sphere
+    vec3 n_w=normalize(p_w-c_w); // normal at position
+    
+    // phong shading, directional light from 1,1,1
+    float shade=0.2+max(0.0,dot(n_w,normalize(vec3(1,1,1))))*0.5;
+    color=vec4(vec3(1,1,1)*shade,1);
+    float glow=pow(max(0.0,dot(reflect(normalize(-vec3(1,1,1)),n_w),-l_w)),120);
+    color=vec4(vec3(1,1,1)*shade+vec3(1,1,1)*glow,1);
+    
+    // phong shading, positional light from COP, exponential fallof
+    shade=max(0.0,-dot(n_w,l_w))*exp(-0.0002*sqrv(f_pos_w.xyz-f_cop_w.xyz));
+    color=color+vec4(vec3(0,0.2,1)*shade,0);
+    
+    // compute depth value
+    vec4 p_v=u_MV*vec4(p_w,1);
+    gl_FragDepth=(-(2.0*ZNEAR*ZFAR/p_v.x-ZFAR-ZNEAR)/(ZFAR-ZNEAR)+1)*0.5;
+  }
+}

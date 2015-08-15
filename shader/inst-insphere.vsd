@@ -1,0 +1,41 @@
+/*
+  Hartballer perfect sphere rendering
+  Copyright (C) 2015 Peter Wagener ( wagenerp@mail.uni-paderborn.de )
+  
+  This program is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the 
+  Free Software Foundation, either version 3 of the License, or (at your option)
+  any later version. 
+  This program is distributed in the hope that it will be useful, but WITHOUT 
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
+  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+  details. 
+  You should have received a copy of the GNU General Public License along with 
+  this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#version 330  
+layout (location=0) in vec2 v_pos_w;
+layout (location=1) in vec4 v_sphere;
+
+uniform mat4 u_MV;
+uniform mat4 u_MVP;
+
+smooth out vec4 f_pos_w;
+out vec4 f_cop_w;
+
+void main(void) {
+  
+  // we overscale the billboard by 1.4. This is a heuristic and should probably
+  // be adjusted to reflect a good value based on aspect ratio and field of 
+  // view.
+  vec3 p=
+    (
+      inverse(u_MV)*vec4(0,v_pos_w.x,v_pos_w.y,0)*1.4
+    ).xyz*v_sphere.w+v_sphere.xyz;
+  
+  gl_Position = u_MVP * vec4(p,1);
+  f_pos_w = vec4(p,1);
+  f_cop_w = inverse(u_MV) * vec4(0,0,0,1);
+  gl_TexCoord[0]=v_sphere;
+}
